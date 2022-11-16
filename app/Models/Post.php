@@ -14,12 +14,30 @@ class Post extends Model
 
     protected $guarded = [];
 
+    public static function boot()
+    {
+
+        parent::boot();
+
+        self::creating(function ($post) {
+
+            $post->user()->associate(auth()->user()->id);
+            $post->category()->associate(request()->category);
+        });
+
+        self::updating(function ($post) {
+
+            $post->category()->associate(request()->category);
+        });
+    }
+
     /**
      * Get the user that owns the post.
      *
      * @return void
      */
-    public function user(){
+    public function user()
+    {
         return $this->belongsTo(User::class);
     }
 
@@ -28,11 +46,13 @@ class Post extends Model
      *
      * @return void
      */
-    public function category(){
+    public function category()
+    {
         return $this->belongsTo(Category::class);
     }
 
-    public function getTitleAttribute($attribute){
+    public function getTitleAttribute($attribute)
+    {
         return Str::title($attribute);
     }
 }

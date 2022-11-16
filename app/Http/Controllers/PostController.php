@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Post;
+use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use App\Http\Requests\StorePostRequest;
 
 class PostController extends Controller
 {
@@ -14,7 +17,7 @@ class PostController extends Controller
      */
     public function index()
     {
-        $posts = Post::with('category','user')->get();
+        $posts = Post::with('category', 'user')->latest()->get();
         return view('post.index', compact('posts'));
     }
 
@@ -25,7 +28,8 @@ class PostController extends Controller
      */
     public function create()
     {
-        return view('post.create');
+        $categories = Category::all();
+        return view('post.create',  compact('categories'));
     }
 
     /**
@@ -34,9 +38,17 @@ class PostController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(StorePostRequest $request)
     {
-        //
+        $imageName = $request->image->store('posts');
+
+        Post::create([
+            'title' => $request->title,
+            'content' => $request->content,
+            'image' => $imageName,
+        ]);
+
+        return redirect()->route('dashboard')->with('success', 'Votre post a ete creer!');
     }
 
     /**
@@ -47,7 +59,7 @@ class PostController extends Controller
      */
     public function show(Post $post)
     {
-        //
+        return view('post.show', compact('post'));
     }
 
     /**
@@ -58,7 +70,8 @@ class PostController extends Controller
      */
     public function edit(Post $post)
     {
-        //
+        $categories = Category::all();
+        return view('post.edit', compact('post', 'categories'));
     }
 
     /**
@@ -68,9 +81,29 @@ class PostController extends Controller
      * @param  \App\Models\Post  $post
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, Post $post)
+    public function update(StorePostRequest $request, Post $post)
     {
-        //
+
+        if (Gate::denies('update-post', $post)) {
+            abort(403);
+        }
+
+        $dataUpdate = [
+            'title' => $request->title,
+            'content' => $request->content,
+        ];
+
+        if ($request->image !== null) {
+            $imageName = $request->image->store('posts');
+            $dataUpdate = array_merge(
+                $dataUpdate,
+                ['image' => $imageName]
+            );
+        }
+
+        $post->update($dataUpdate);
+
+        return redirect()->route('dashboard')->with('success', 'Votre post a ete modifie!');
     }
 
     /**
@@ -81,6 +114,13 @@ class PostController extends Controller
      */
     public function destroy(Post $post)
     {
-        //
+        if (Gate::denies('destroy-post', $post)) {
+            abort(403);
+        }
+
+        $post->delete();
+
+        return redirect()->route('dashboard')->with('success', 'Votre post a ete delete!');
+
     }
 }
